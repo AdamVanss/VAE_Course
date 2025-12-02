@@ -45,6 +45,17 @@ Generative models are not just about creating pretty pictures. They represent:
 
 VAEs fall into the "Explicit Density, Approximate" category—we cannot compute \(p_\theta(x)\) exactly, but we can optimize a lower bound on it.
 
+### What Does "Lower Bound" Mean Intuitively?
+
+When we say VAEs optimize a **lower bound** on \(p_\theta(x)\), imagine you want to measure the height of a mountain, but clouds obscure the peak. You can't see the true height, but you can always see *at least* up to the cloud line. The cloud line is your lower bound—it's guaranteed to be less than or equal to the true height.
+
+Similarly, for VAEs:
+- The true quantity \(\log p_\theta(x)\) (how likely our model thinks the data is) is impossible to compute directly
+- We derive a quantity called the **ELBO** (Evidence Lower Bound) that is always ≤ \(\log p_\theta(x)\)
+- When we maximize the ELBO, we push this "floor" upward, which necessarily pushes up the true likelihood too
+
+**Why is this useful?** If we keep raising the floor (ELBO), the ceiling (true log-likelihood) must also rise. Even though we never directly touch \(\log p_\theta(x)\), maximizing its lower bound still improves our model.
+
 ---
 
 ## 1.2 The Data Distribution vs Model Distribution
@@ -67,7 +78,26 @@ Given our finite dataset, we can define:
 \[
 \hat{p}_{\text{data}}(x) = \frac{1}{N} \sum_{i=1}^{N} \delta(x - x^{(i)})
 \]
-where \(\delta\) is the Dirac delta function. This places all probability mass exactly on our observed data points.
+
+**What is the Dirac Delta Function?**
+
+The Dirac delta \(\delta(x)\) is a mathematical object (technically a "distribution," not a function) with these properties:
+- \(\delta(x) = 0\) everywhere except at \(x = 0\)
+- At \(x = 0\), it's "infinitely tall" but "infinitely narrow"
+- Its total integral equals 1: \(\int_{-\infty}^{\infty} \delta(x) dx = 1\)
+
+Think of it as the limit of increasingly narrow, tall spikes. A Gaussian \(\mathcal{N}(0, \sigma^2)\) becomes a delta function as \(\sigma \to 0\): all probability concentrates at a single point.
+
+**Why use it here?**
+
+When we write \(\delta(x - x^{(i)})\), we're placing a "spike" of probability exactly at data point \(x^{(i)}\). The empirical distribution says: *"The probability is concentrated entirely on the exact data points we observed, nowhere else."*
+
+This is useful because:
+1. It's the most "honest" representation—we only have evidence for these exact points
+2. When we take expectations over \(\hat{p}_{\text{data}}\), we simply average over our dataset:
+   \[
+   \mathbb{E}_{x \sim \hat{p}_{\text{data}}}[f(x)] = \frac{1}{N}\sum_{i=1}^{N} f(x^{(i)})
+   \]
 
 For practical purposes, when we say "data distribution," we usually mean this empirical distribution.
 
@@ -183,10 +213,26 @@ The **log probability** is:
 \log \mathcal{N}(x; \mu, \sigma^2) = -\frac{1}{2}\log(2\pi) - \frac{1}{2}\log(\sigma^2) - \frac{(x-\mu)^2}{2\sigma^2}
 \]
 
+**What is a Multivariate Gaussian?**
+
+A **multivariate Gaussian** (or multivariate normal) is the extension of the bell curve to multiple dimensions. Instead of a single variable \(x\), you have a vector \(x = [x_1, x_2, \ldots, x_d]\).
+
+**Intuition:** Imagine a 2D case. A univariate Gaussian is a bell curve (1D bump). A bivariate Gaussian is a 3D "hill" or "blob" when viewed from above—it looks like an ellipse of contour lines centered at the mean \(\mu\).
+
+- The **mean** \(\mu = [\mu_1, \mu_2, \ldots, \mu_d]\) is the center of the blob
+- The **covariance matrix** \(\Sigma\) controls the shape: how stretched or rotated the ellipse is
+
+**Diagonal covariance** (what VAEs typically use) means each dimension is independent:
+- \(\Sigma = \text{diag}(\sigma_1^2, \sigma_2^2, \ldots, \sigma_d^2)\)
+- The ellipse axes align with the coordinate axes (no rotation)
+- The probability factorizes: \(p(x) = p(x_1) \cdot p(x_2) \cdot \ldots \cdot p(x_d)\)
+
 For a **multivariate** Gaussian with diagonal covariance (independent dimensions):
 \[
 \log \mathcal{N}(x; \mu, \text{diag}(\sigma^2)) = -\frac{d}{2}\log(2\pi) - \frac{1}{2}\sum_{i=1}^{d}\log(\sigma_i^2) - \frac{1}{2}\sum_{i=1}^{d}\frac{(x_i-\mu_i)^2}{\sigma_i^2}
 \]
+
+This is simply the sum of \(d\) independent univariate Gaussian log-probabilities.
 
 ### Numerical Example
 
@@ -240,6 +286,22 @@ The KL divergence measures how one distribution \(q\) differs from a reference d
 D_{\text{KL}}(q \| p) = \mathbb{E}_{x \sim q}\left[\log \frac{q(x)}{p(x)}\right] = \mathbb{E}_{x \sim q}[\log q(x)] - \mathbb{E}_{x \sim q}[\log p(x)]
 \]
 
+**Why is it an expectation?**
+
+The KL divergence asks: *"On average, how surprised would I be if I thought data came from \(p\), but it actually came from \(q\)?"*
+
+Here's the intuition:
+1. We sample points from \(q\) (where the data actually comes from)
+2. For each point, we compute \(\log \frac{q(x)}{p(x)}\)—the log-ratio of probabilities
+3. We average this over all samples
+
+**Why this formula makes sense:**
+- If \(q(x) > p(x)\) at some point, then \(\log \frac{q(x)}{p(x)} > 0\): distribution \(q\) puts more mass here than \(p\) expected
+- If \(q(x) < p(x)\), then \(\log \frac{q(x)}{p(x)} < 0\): \(q\) puts less mass than \(p\) expected
+- We weight these by \(q(x)\) (the expectation under \(q\)) because we care about regions where \(q\) actually puts probability
+
+**Simple analogy:** Imagine you're a weather forecaster. \(p\) is your predicted rain probability, \(q\) is the actual weather. KL divergence measures how "wrong" your predictions were, on average, weighted by what actually happened.
+
 Properties:
 - \(D_{\text{KL}}(q \| p) \geq 0\) always (Gibbs' inequality)
 - \(D_{\text{KL}}(q \| p) = 0\) if and only if \(q = p\) almost everywhere
@@ -251,12 +313,32 @@ Properties:
 
 ### The MLE Principle
 
+**Understanding argmax and argmin**
+
+Before diving into MLE, let's clarify what \(\arg\max\) and \(\arg\min\) mean:
+
+- \(\max_\theta f(\theta)\) returns the **maximum value** of function \(f\)
+- \(\arg\max_\theta f(\theta)\) returns the **argument** (input) \(\theta\) that achieves that maximum
+
+**Simple example:** Consider \(f(\theta) = -(\theta - 3)^2 + 10\). This is a downward parabola.
+- \(\max_\theta f(\theta) = 10\) (the highest point on the curve)
+- \(\arg\max_\theta f(\theta) = 3\) (the \(\theta\) value where the maximum occurs)
+
+Similarly, \(\arg\min_\theta g(\theta)\) returns the \(\theta\) that minimizes \(g\).
+
+**Example:** For \(g(\theta) = (\theta - 5)^2\):
+- \(\min_\theta g(\theta) = 0\)
+- \(\arg\min_\theta g(\theta) = 5\)
+
+Now, the MLE principle:
+
 Given data \(\mathcal{D} = \{x^{(1)}, \ldots, x^{(N)}\}\), find parameters \(\theta\) that maximize the likelihood of observing this data:
 \[
 \theta^* = \arg\max_\theta \prod_{i=1}^{N} p_\theta(x^{(i)})
 \]
 
 Equivalently, maximize the log-likelihood:
+Logarithm is an increasing function. (x grows if and only if log(x) grows)
 \[
 \theta^* = \arg\max_\theta \sum_{i=1}^{N} \log p_\theta(x^{(i)})
 \]
@@ -272,6 +354,24 @@ Or minimize the negative log-likelihood:
 2. **Decomposition:** Log turns products into sums, enabling mini-batch training
 3. **Interpretation:** Negative log-likelihood is related to **bits** needed to encode data
 
+**The Bits Interpretation (Information Theory Connection)**
+
+In information theory, the **entropy** of a distribution measures the average number of bits needed to encode samples from it. The key insight: \(-\log_2 p(x)\) gives the number of bits needed to encode an event with probability \(p(x)\).
+
+- If \(p(x) = 1\) (certain event): \(-\log_2(1) = 0\) bits needed
+- If \(p(x) = 0.5\): \(-\log_2(0.5) = 1\) bit needed
+- If \(p(x) = 0.25\): \(-\log_2(0.25) = 2\) bits needed
+- If \(p(x) = 0.001\) (rare event): \(-\log_2(0.001) \approx 10\) bits needed
+
+**Why this matters for VAEs:**
+
+When we minimize negative log-likelihood \(-\log p_\theta(x)\), we're essentially asking: *"How many bits does our model need to encode this data?"*
+
+- A good model assigns high probability to real data → fewer bits → lower loss
+- A bad model assigns low probability → many bits → higher loss
+
+Using natural log (\(\ln\)) instead of \(\log_2\) gives units of "nats" instead of bits (1 nat ≈ 1.44 bits), but the intuition is identical.
+
 ### Connection to Cross-Entropy
 
 The negative log-likelihood averaged over the dataset:
@@ -284,6 +384,18 @@ This is the **cross-entropy** between the data distribution and model distributi
 ---
 
 ## 1.6 The Intractability Problem
+
+### What Does "Intractable" Mean?
+
+In mathematics and computer science, a problem is **intractable** when it cannot be solved exactly in a reasonable amount of time or with finite resources. There are different flavors:
+
+1. **Computationally intractable:** The exact solution exists but would take exponentially long to compute (e.g., brute-force search over all possibilities)
+
+2. **Analytically intractable:** No closed-form mathematical expression exists. You can't write down a formula—the integral or sum has no nice solution.
+
+3. **Practically intractable:** The solution might exist theoretically, but computing it requires resources we don't have (infinite samples, infinite precision, etc.)
+
+In VAEs, we face **analytical intractability**: the integral defining \(p_\theta(x)\) has no closed-form solution for neural network decoders.
 
 ### Why Can't We Just Maximize \(\log p_\theta(x)\)?
 

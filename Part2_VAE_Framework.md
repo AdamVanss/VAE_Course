@@ -44,6 +44,47 @@ The ELBO is a **lower bound** on the log-evidence (log marginal likelihood). Max
 
 We'll derive the ELBO three different ways to build deep understanding.
 
+### Prerequisite: Jensen's Inequality
+
+Before we derive the ELBO, we need to understand **Jensen's inequality**—a fundamental result that makes the entire VAE framework possible.
+
+**Statement:** For any **concave** function \(f\) (curves downward, like \(\log\)) and random variable \(X\):
+\[
+f(\mathbb{E}[X]) \geq \mathbb{E}[f(X)]
+\]
+
+For a **convex** function \(g\) (curves upward, like \(x^2\)), the inequality flips:
+\[
+g(\mathbb{E}[X]) \leq \mathbb{E}[g(X)]
+\]
+
+**Intuition with a picture:**
+
+Imagine a concave function like \(f(x) = \log(x)\). Pick two points \(x_1\) and \(x_2\) on the curve. The average of these points, \(\frac{x_1 + x_2}{2}\), lies on the x-axis between them. Now compare:
+- \(f\left(\frac{x_1 + x_2}{2}\right)\) = the function value at the average x (a point ON the curve)
+- \(\frac{f(x_1) + f(x_2)}{2}\) = the average of the function values (a point on the LINE between the two curve points)
+
+Because the curve bends downward (concave), the point on the curve is ABOVE the line. That's Jensen's inequality!
+
+**Simple numerical example:**
+
+Let \(f(x) = \log(x)\) and suppose \(X\) takes values 1 and 3 with equal probability.
+
+- \(\mathbb{E}[X] = \frac{1+3}{2} = 2\)
+- \(f(\mathbb{E}[X]) = \log(2) \approx 0.693\)
+- \(\mathbb{E}[f(X)] = \frac{\log(1) + \log(3)}{2} = \frac{0 + 1.099}{2} \approx 0.549\)
+
+Indeed: \(0.693 \geq 0.549\) ✓
+
+**Why this matters for VAEs:**
+
+We want to compute \(\log p_\theta(x) = \log \mathbb{E}_{q}[\text{something}]\). We can't compute this directly, but Jensen's inequality tells us:
+\[
+\log \mathbb{E}_q[\cdot] \geq \mathbb{E}_q[\log(\cdot)]
+\]
+
+The right side IS computable—that's our ELBO!
+
 ### Derivation 1: From Jensen's Inequality
 
 Start with the log marginal likelihood:

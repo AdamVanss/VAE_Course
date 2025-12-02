@@ -31,6 +31,7 @@ This course is organized into multiple files for better navigation:
 - Linear algebra (matrices, eigenvalues, vector calculus)
 - Probability theory (distributions, expectations, Bayes' theorem)
 - Deep learning basics (neural networks, backpropagation, PyTorch or TensorFlow)
+- Information theory and Entropy
 - Python programming
 
 ## Suggestions for Better Explanations

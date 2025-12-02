@@ -2,6 +2,8 @@
 
 I struggled for a long time to properly understand Variational Autoencoders. Most resources assumed prior knowledge of mathematical concepts, and when I tried to learn them separately, they were often explained in contexts unrelated to VAEs, such as GANs or other deep learning models. I created this course to give anyone with similar goals a clear and foundational path to understanding VAEs from the ground up.
 
+PS: You can render the latex notations by forking the repo and using the extension "Markdown Preview Enhanced" on VScode. Then open a file and press Ctrl + Shit + V
+
 **Author:** Adam Mazouar
 **Date:** December 2, 2025  
 **Version:** 1.0

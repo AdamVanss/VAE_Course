@@ -1,0 +1,245 @@
+% Appendix D: LaTeX Source for VAE Equations
+% Compile with: pdflatex Appendix_D_LaTeX.tex
+
+\documentclass[11pt,a4paper]{article}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{bm}
+\usepackage{hyperref}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\title{Variational Autoencoders: Mathematical Reference}
+\author{Adam Mazouar}
+\date{\today}
+
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\KL}{\text{KL}}
+\newcommand{\N}{\mathcal{N}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\ELBO}{\mathcal{L}}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+%==============================================================================
+\section{Core Definitions}
+%==============================================================================
+
+\subsection{Random Variables and Distributions}
+
+\begin{itemize}
+    \item $x \in \R^D$: Observed data (e.g., image with $D$ pixels)
+    \item $z \in \R^d$: Latent variable ($d \ll D$ typically)
+    \item $\theta$: Decoder (generative model) parameters
+    \item $\phi$: Encoder (inference model) parameters
+\end{itemize}
+
+\subsection{Key Distributions}
+
+\textbf{Prior:}
+\begin{equation}
+    p(z) = \N(z; 0, I) = \prod_{j=1}^{d} \N(z_j; 0, 1)
+\end{equation}
+
+\textbf{Likelihood (Decoder):}
+\begin{equation}
+    p_\theta(x|z) = \prod_{i=1}^{D} p_\theta(x_i | z)
+\end{equation}
+
+\textbf{Approximate Posterior (Encoder):}
+\begin{equation}
+    q_\phi(z|x) = \N(z; \mu_\phi(x), \text{diag}(\sigma^2_\phi(x)))
+\end{equation}
+
+%==============================================================================
+\section{Evidence Lower Bound (ELBO)}
+%==============================================================================
+
+\subsection{Main Equation}
+
+\begin{equation}
+\boxed{
+    \ELBO(\theta, \phi; x) = \E_{q_\phi(z|x)}[\log p_\theta(x|z)] - D_{\KL}(q_\phi(z|x) \| p(z))
+}
+\end{equation}
+
+Equivalently:
+\begin{equation}
+    \ELBO(\theta, \phi; x) = \E_{q_\phi(z|x)}\left[\log \frac{p_\theta(x,z)}{q_\phi(z|x)}\right]
+\end{equation}
+
+\subsection{Fundamental Inequality}
+
+\begin{equation}
+    \log p_\theta(x) \geq \ELBO(\theta, \phi; x)
+\end{equation}
+
+\subsection{Gap Characterization}
+
+\begin{equation}
+    \log p_\theta(x) = \ELBO(\theta, \phi; x) + D_{\KL}(q_\phi(z|x) \| p_\theta(z|x))
+\end{equation}
+
+%==============================================================================
+\section{KL Divergence}
+%==============================================================================
+
+\subsection{General Definition}
+
+\begin{equation}
+    D_{\KL}(q \| p) = \E_q\left[\log \frac{q(z)}{p(z)}\right] = \int q(z) \log \frac{q(z)}{p(z)} dz
+\end{equation}
+
+\subsection{Properties}
+
+\begin{itemize}
+    \item $D_{\KL}(q \| p) \geq 0$ (Gibbs' inequality)
+    \item $D_{\KL}(q \| p) = 0 \Leftrightarrow q = p$ almost everywhere
+    \item $D_{\KL}(q \| p) \neq D_{\KL}(p \| q)$ in general (asymmetric)
+\end{itemize}
+
+\subsection{Gaussian KL (Univariate)}
+
+For $q = \N(\mu, \sigma^2)$ and $p = \N(0, 1)$:
+\begin{equation}
+\boxed{
+    D_{\KL}(\N(\mu, \sigma^2) \| \N(0, 1)) = \frac{1}{2}\left(\mu^2 + \sigma^2 - \log \sigma^2 - 1\right)
+}
+\end{equation}
+
+\subsection{Gaussian KL (Multivariate, Diagonal)}
+
+For $q = \N(\bm{\mu}, \text{diag}(\bm{\sigma}^2))$ and $p = \N(0, I)$:
+\begin{equation}
+\boxed{
+    D_{\KL}(q \| p) = \frac{1}{2}\sum_{j=1}^{d}\left(\mu_j^2 + \sigma_j^2 - \log \sigma_j^2 - 1\right)
+}
+\end{equation}
+
+\subsection{General Gaussian KL}
+
+For $\N(\bm{\mu}_1, \Sigma_1)$ and $\N(\bm{\mu}_2, \Sigma_2)$:
+\begin{equation}
+    D_{\KL} = \frac{1}{2}\left[\log\frac{|\Sigma_2|}{|\Sigma_1|} - d + \text{tr}(\Sigma_2^{-1}\Sigma_1) + (\bm{\mu}_2-\bm{\mu}_1)^T\Sigma_2^{-1}(\bm{\mu}_2-\bm{\mu}_1)\right]
+\end{equation}
+
+%==============================================================================
+\section{Reparameterization Trick}
+%==============================================================================
+
+\subsection{Transformation}
+
+\begin{equation}
+\boxed{
+    z = \bm{\mu}_\phi(x) + \bm{\sigma}_\phi(x) \odot \bm{\epsilon}, \quad \bm{\epsilon} \sim \N(0, I)
+}
+\end{equation}
+
+where $\odot$ denotes element-wise multiplication.
+
+\subsection{Gradient Computation}
+
+\begin{equation}
+    \nabla_\phi \E_{q_\phi(z|x)}[f(z)] = \E_{\bm{\epsilon} \sim \N(0,I)}[\nabla_\phi f(\bm{\mu}_\phi(x) + \bm{\sigma}_\phi(x) \odot \bm{\epsilon})]
+\end{equation}
+
+\subsection{Monte Carlo Estimate}
+
+\begin{equation}
+    \nabla_\phi \E_{q_\phi}[f(z)] \approx \frac{1}{L}\sum_{\ell=1}^{L} \nabla_\phi f(\bm{\mu}_\phi(x) + \bm{\sigma}_\phi(x) \odot \bm{\epsilon}^{(\ell)})
+\end{equation}
+
+%==============================================================================
+\section{Gaussian Distributions}
+%==============================================================================
+
+\subsection{Univariate Density}
+
+\begin{equation}
+    \N(x; \mu, \sigma^2) = \frac{1}{\sqrt{2\pi\sigma^2}} \exp\left(-\frac{(x-\mu)^2}{2\sigma^2}\right)
+\end{equation}
+
+\subsection{Univariate Log-Density}
+
+\begin{equation}
+    \log \N(x; \mu, \sigma^2) = -\frac{1}{2}\log(2\pi) - \frac{1}{2}\log(\sigma^2) - \frac{(x-\mu)^2}{2\sigma^2}
+\end{equation}
+
+\subsection{Multivariate Log-Density (Diagonal)}
+
+\begin{equation}
+    \log \N(x; \bm{\mu}, \text{diag}(\bm{\sigma}^2)) = -\frac{D}{2}\log(2\pi) - \frac{1}{2}\sum_{i=1}^{D}\log(\sigma_i^2) - \frac{1}{2}\sum_{i=1}^{D}\frac{(x_i-\mu_i)^2}{\sigma_i^2}
+\end{equation}
+
+%==============================================================================
+\section{Reconstruction Losses}
+%==============================================================================
+
+\subsection{Bernoulli (Binary Cross-Entropy)}
+
+For $x_i \in \{0,1\}$ with predicted probability $p_i$:
+\begin{equation}
+    -\log p(x | \bm{p}) = -\sum_{i=1}^{D} \left[x_i \log p_i + (1-x_i) \log(1-p_i)\right]
+\end{equation}
+
+\subsection{Gaussian (Mean Squared Error)}
+
+For continuous $x$ with fixed variance $\sigma^2$:
+\begin{equation}
+    -\log p(x | \bm{\mu}) = \frac{D}{2}\log(2\pi\sigma^2) + \frac{1}{2\sigma^2}\|\bm{x} - \bm{\mu}\|^2
+\end{equation}
+
+With $\sigma^2 = 1$: minimizing negative log-likelihood $\equiv$ minimizing MSE.
+
+%==============================================================================
+\section{VAE Objective (Loss Function)}
+%==============================================================================
+
+\subsection{Full Loss}
+
+\begin{equation}
+    \text{Loss} = -\ELBO = -\E_{q_\phi(z|x)}[\log p_\theta(x|z)] + D_{\KL}(q_\phi(z|x) \| p(z))
+\end{equation}
+
+\subsection{Monte Carlo Estimate}
+
+\begin{equation}
+    \text{Loss} \approx -\log p_\theta(x|z) + D_{\KL}(q_\phi(z|x) \| p(z)), \quad z \sim q_\phi(z|x)
+\end{equation}
+
+\subsection{$\beta$-VAE Variant}
+
+\begin{equation}
+    \text{Loss}_\beta = -\E_q[\log p_\theta(x|z)] + \beta \cdot D_{\KL}(q_\phi(z|x) \| p(z))
+\end{equation}
+
+%==============================================================================
+\section{IWAE Bound}
+%==============================================================================
+
+\begin{equation}
+    \ELBO_K = \E_{z^{(1)}, \ldots, z^{(K)} \sim q}\left[\log \frac{1}{K}\sum_{k=1}^{K} \frac{p_\theta(x, z^{(k)})}{q_\phi(z^{(k)}|x)}\right]
+\end{equation}
+
+\begin{equation}
+    \ELBO_1 \leq \ELBO_2 \leq \cdots \leq \ELBO_K \leq \log p_\theta(x)
+\end{equation}
+
+%==============================================================================
+\section{Summary of Key Equations}
+%==============================================================================
+
+\begin{align}
+    \text{ELBO:} \quad & \ELBO = \E_q[\log p_\theta(x|z)] - D_{\KL}(q \| p(z)) \\[2mm]
+    \text{Bound:} \quad & \log p_\theta(x) \geq \ELBO \\[2mm]
+    \text{KL (Gaussian):} \quad & D_{\KL} = \frac{1}{2}\sum_j(\mu_j^2 + \sigma_j^2 - \log\sigma_j^2 - 1) \\[2mm]
+    \text{Reparameterization:} \quad & z = \mu + \sigma \odot \epsilon, \quad \epsilon \sim \N(0, I) \\[2mm]
+    \text{Loss:} \quad & \text{BCE}(x, \hat{x}) + \text{KL}
+\end{align}
+
+\end{document}
+
+

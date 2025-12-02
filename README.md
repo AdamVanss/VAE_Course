@@ -31,28 +31,7 @@ This course is organized into multiple files for better navigation:
 - Deep learning basics (neural networks, backpropagation, PyTorch or TensorFlow)
 - Python programming
 
-## Quick Start
+## Suggestions for Better Explanations
 
-```bash
-# Install dependencies
-pip install torch torchvision tensorflow numpy matplotlib scikit-learn
-
-# Run minimal VAE example
-cd code
-python minimal_vae_pytorch.py
-```
-
-## Learning Path
-
-See the detailed 12-week study schedule in Part 5.
-
----
-
-**Citation:** If you use this course material, please cite:
-```
-@misc{vae_course_2025,
-  title={Course on Variational Autoencoders},
-  author={Adam Mazouar},
-  date={december 2025}
-}
-```
+If you find any concept in this course unclear or not explained well, please add it to **[Explanation Suggestions](Explanation_Suggestions.md)**.  
+Do not rewrite the explanations—just note what needs more clarity so it can be improved in a future update.
